@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Four-Zone Pyrolysis Simulator — From Trash to Energy (Phase F STEM)</title>
+<style>
+  :root{
+    --indigo:#505383; --indigo-d:#3c3e66; --navy:#163952; --maroon:#8a3744; --plum:#6e5375;
+    --mauve:#8d5d80; --teal:#00615c; --cream:#f8f0df; --cream2:#fbf7ee; --sand:#c0a890;
+    --copper:#c27549; --steel:#9a9ab7; --ink:#231f20; --line:#e3d5bb;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:#ece4d3;color:var(--ink);padding:12px 14px}
+  header{background:linear-gradient(120deg,var(--indigo-d),var(--indigo) 55%,var(--plum));color:var(--cream);
+    border-radius:14px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+    box-shadow:0 4px 14px rgba(35,31,32,.18)}
+  header h1{font-size:1.18rem;font-weight:800;letter-spacing:.2px}
+  header h1 span{color:#f2c9a8}
+  header p{font-size:.8rem;opacity:.9;margin-top:2px}
+  header{display:grid;grid-template-columns:minmax(0,1fr) auto}
+  .header-image{width:clamp(64px,10vw,120px);height:auto;max-height:88px;object-fit:contain;object-position:right top;align-self:start}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap}
+  .tab{border:1.5px solid rgba(248,240,223,.5);background:rgba(248,240,223,.1);color:var(--cream);padding:7px 13px;border-radius:18px;
+    font-weight:700;font-size:.8rem;cursor:pointer}
+  .tab.active{background:var(--cream);color:var(--maroon);border-color:var(--cream)}
+  .layout{display:grid;grid-template-columns:330px 1fr;gap:12px;margin-top:12px}
+  @media(max-width:1150px){.layout{grid-template-columns:1fr}}
+  .panel{background:var(--cream2);border:1.5px solid var(--line);border-radius:13px;padding:12px 14px;box-shadow:0 2px 8px rgba(35,31,32,.05)}
+  .ptitle{font-size:.86rem;font-weight:800;color:var(--maroon);border-bottom:2px solid var(--line);padding-bottom:5px;margin:4px 0 9px;
+    display:flex;justify-content:space-between;align-items:center}
+  .zone-tag{font-size:.68rem;color:#fff;padding:2px 8px;border-radius:9px;font-weight:700}
+  .z1{background:var(--teal)}.z2{background:var(--maroon)}.z3{background:var(--navy)}.z4{background:var(--copper)}
+  .row{margin-bottom:8px}
+  .row label{display:flex;justify-content:space-between;font-size:.78rem;font-weight:650;margin-bottom:3px}
+  .row label b{color:var(--navy)}
+  input[type=range]{width:100%;accent-color:var(--maroon)}
+  select{width:100%;padding:5px 7px;border-radius:7px;border:1.5px solid #d4c4a6;background:#fff;font-size:.79rem;font-weight:600;color:var(--ink)}
+  .hint{font-size:.7rem;color:#6b5f55;margin-top:2px;line-height:1.3}
+  .comp{display:grid;grid-template-columns:62px 1fr 42px;gap:6px;align-items:center;font-size:.77rem;font-weight:700;margin-bottom:4px}
+  .comp .pct{text-align:right;color:var(--navy)}
+  .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+  .stack{display:flex;height:14px;border-radius:7px;overflow:hidden;border:1px solid #cdbb9a;margin:5px 0 7px}
+  .presets{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+  .presets button{font-size:.69rem;padding:4px 7px;border-radius:7px;border:1.3px solid #cdbb9a;background:#fff;cursor:pointer;font-weight:700;color:var(--plum)}
+  .presets button:hover{background:var(--cream)}
+  .btns{display:flex;gap:7px;margin-top:8px}
+  .btn{flex:1;padding:9px 8px;border-radius:9px;border:none;font-weight:800;font-size:.84rem;cursor:pointer}
+  .b-run{background:var(--teal);color:#fff}.b-reset{background:var(--indigo);color:#fff}.b-alt{background:var(--copper);color:#fff}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .chk{display:flex;align-items:center;gap:6px;font-size:.78rem;font-weight:650;margin-bottom:8px}
+  .right{display:flex;flex-direction:column;gap:12px;min-width:0}
+  .status{padding:8px 12px;border-radius:9px;font-size:.84rem;font-weight:700;margin-bottom:8px;border:1.5px solid}
+  .st-idle{background:#efe6d3;color:var(--plum);border-color:#d8c8a8}
+  .st-ok{background:#e1efe9;color:var(--teal);border-color:#8fbfb2}
+  .st-warn{background:#f7e7d6;color:#8a4a17;border-color:#dfa877}
+  .st-bad{background:#f5dfe2;color:var(--maroon);border-color:#d39aa3}
+  canvas#scene{width:100%;aspect-ratio:1100/560;display:block;border-radius:11px;border:2px solid var(--indigo-d);background:#484878}
+  .gauges{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;margin-top:9px}
+  @media(max-width:900px){.gauges{grid-template-columns:repeat(4,1fr)}}
+  .gg{background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:6px 8px}
+  .gg .l{font-size:.66rem;font-weight:800;color:#7a6a5c;text-transform:uppercase;letter-spacing:.3px}
+  .gg .v{font-size:1.02rem;font-weight:800;color:var(--navy);margin-top:1px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:1000px){.two{grid-template-columns:1fr}}
+  canvas#chart{width:100%;aspect-ratio:560/230;display:block;background:#fff;border:1.5px solid var(--line);border-radius:9px}
+  .legend{display:flex;gap:12px;font-size:.72rem;font-weight:700;margin-top:5px;flex-wrap:wrap}
+  .calc{font-size:.77rem;line-height:1.55}
+  .calc div{padding:3px 0;border-bottom:1px dashed #e1d3b8}
+  .calc b{color:var(--maroon)}
+  table{width:100%;border-collapse:collapse;font-size:.78rem}
+  th{background:var(--indigo);color:var(--cream);padding:6px 7px;text-align:left;font-weight:700}
+  td{padding:5px 7px;border-bottom:1px solid #eadfc8}
+  tr:nth-child(even) td{background:#fbf6ea}
+  td.num{text-align:right;font-weight:700;color:var(--navy)}
+  .find{list-style:none;font-size:.78rem;line-height:1.45}
+  .find li{padding:6px 9px;border-radius:8px;margin-bottom:5px;border-left:5px solid}
+  .f-ok{background:#e4f0eb;border-color:var(--teal)}
+  .f-warn{background:#f8ebdc;border-color:var(--copper)}
+  .f-bad{background:#f6e1e4;border-color:var(--maroon)}
+  .note{font-size:.7rem;color:#6b5f55;margin-top:8px;line-height:1.4}
+  .reference-table{min-width:640px;font-size:.88rem}
+  .reference-table td,.reference-table tbody th{padding:10px 12px;border-bottom:1px solid #eadfc8;vertical-align:middle}
+  .reference-table tbody th{background:transparent;color:var(--ink);font-weight:700;width:27%}
+  .reference-table tbody tr:nth-child(even){background:#fbf6ea}
+  .reference-table .resin-symbol{display:block;width:88px;height:88px;object-fit:contain;margin:auto}
+  .reference-table .symbol-cell{text-align:center;width:120px}
+  .reference-sources{font-size:.76rem;line-height:1.6;margin-top:12px}
+  .reference-sources a{color:var(--navy)}
+  .hide{display:none!important}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>FROM TRASH TO ENERGY · <span>Four-Zone Pyrolysis Simulator</span></h1>
+    <p lang="id">STEM Fase F · Kelas XII · SMA Permata Bangsa — Amin Masruri &amp; Hesti Prastianingrum · Kokurikuler</p>
+    <div class="tabs" style="margin-top:8px">
+      <button class="tab active" id="tabPyro" onclick="showView('pyro')">① Virtual Pyrolysis (Community Scale)</button>
+      <button class="tab" id="tabCold" onclick="showView('cold')">② Prototype Cold Testing</button>
+      <button type="button" class="tab" id="tabReference" aria-controls="plasticReference" aria-expanded="false" onclick="showView('reference')">③ Reference</button>
+    </div>
+  </div>
+  <img class="header-image" src="pyrolisis.png" alt="Pyrolysis illustration">
+</header>
+
+<section class="panel hide" id="plasticReference" aria-labelledby="referenceTitle" style="margin-top:12px">
+  <h2 class="ptitle" id="referenceTitle">Plastic Identification Reference</h2>
+  <div style="overflow-x:auto">
+    <table class="reference-table">
+      <caption style="text-align:left;padding-bottom:8px">Five resin types in this simulator and familiar product examples in Indonesia</caption>
+      <thead><tr><th scope="col">Plastic type</th><th scope="col">Resin code</th><th scope="col">Recycling symbol</th><th scope="col">Everyday product examples</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Polyethylene terephthalate (PET)</th><td>1 — PET</td><td class="symbol-cell"><img class="resin-symbol" src="reference-symbols/resin-pet.svg" alt="Resin identification triangle with number 1 and PET"></td><td>Clear disposable mineral-water bottles; ready-to-drink bottled tea or soft-drink bottles.</td></tr>
+        <tr><th scope="row">High-density polyethylene (HDPE)</th><td>2 — HDPE</td><td class="symbol-cell"><img class="resin-symbol" src="reference-symbols/resin-hdpe.svg" alt="Resin identification triangle with number 2 and HDPE"></td><td>Opaque laundry-detergent bottles; rigid shampoo bottles; some sturdy cooking-oil jerrycans.</td></tr>
+        <tr><th scope="row">Polyvinyl chloride (PVC)</th><td>3 — PVC</td><td class="symbol-cell"><img class="resin-symbol" src="reference-symbols/resin-pvc.svg" alt="Resin identification triangle with number 3 and PVC"></td><td>Household water-supply or drain pipes; flexible insulation around electrical cables.</td></tr>
+        <tr><th scope="row">Low-density polyethylene (LDPE)</th><td>4 — LDPE</td><td class="symbol-cell"><img class="resin-symbol" src="reference-symbols/resin-ldpe.svg" alt="Resin identification triangle with number 4 and LDPE"></td><td>Soft clear bread bags; some thin produce bags used at traditional markets; flexible plastic wrapping.</td></tr>
+        <tr><th scope="row">Polypropylene (PP)</th><td>5 — PP</td><td class="symbol-cell"><img class="resin-symbol" src="reference-symbols/resin-pp.svg" alt="Resin identification triangle with number 5 and PP"></td><td>Takeaway-food containers; reusable lunchboxes; many flip-top bottle caps.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Examples are indicative: check the resin marking on the actual product. A bottle, cap, and label can use different plastics; the symbol does not guarantee local recycling acceptance. PVC and PET are shown for identification, not as recommended pyrolysis feedstocks.</p>
+  <div class="reference-sources"><strong>Image sources and license:</strong> Symbol artwork downloaded from Wikimedia Commons; each linked file page lists the image as <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener noreferrer">CC0 1.0 (public-domain dedication)</a>.
+    <a href="https://commons.wikimedia.org/wiki/File:Symbol_Resin_Code_01_PET.svg" target="_blank" rel="noopener noreferrer">PET source</a> ·
+    <a href="https://commons.wikimedia.org/wiki/File:Symbol_Resin_Code_2_HDPE.svg" target="_blank" rel="noopener noreferrer">HDPE source</a> ·
+    <a href="https://commons.wikimedia.org/wiki/File:Symbol_Resin_Code_03_PVC.svg" target="_blank" rel="noopener noreferrer">PVC source</a> ·
+    <a href="https://commons.wikimedia.org/wiki/File:Symbol_Resin_Code_4_LDPE.svg" target="_blank" rel="noopener noreferrer">LDPE source</a> ·
+    <a href="https://commons.wikimedia.org/wiki/File:Symbol_Resin_Code_05_PP.svg" target="_blank" rel="noopener noreferrer">PP source</a>.
+  </div>
+</section>
+
+<div class="layout" id="simulatorLayout">
+  <!-- ================= CONTROLS ================= -->
+  <div class="panel">
+    <div class="pyro-only">
+      <div class="ptitle"><span>Plastic Feed Composition</span><span class="zone-tag z1">ZONE 1</span></div>
+      <div class="presets">
+        <button onclick="preset({PP:100})">100% PP</button>
+        <button onclick="preset({HDPE:100})">100% HDPE</button>
+        <button onclick="preset({LDPE:100})">100% LDPE</button>
+        <button onclick="preset({PP:40,LDPE:35,HDPE:25})">Waste Bank Mix</button>
+        <button onclick="preset({PP:40,LDPE:30,HDPE:20,PVC:10})">+10% PVC</button>
+        <button onclick="preset({PP:35,LDPE:25,HDPE:20,PET:20})">+20% PET</button>
+        <button onclick="preset({PVC:100})">100% PVC</button>
+      </div>
+      <div id="compRows"></div>
+      <div class="stack" id="stack"></div>
+      <div class="row">
+        <label>Batch mass (waste bank capacity) <b id="vMass">15 kg</b></label>
+        <input type="range" id="mass" min="10" max="20" step="1" value="15" oninput="onBatch()">
+      </div>
+
+      <div class="ptitle"><span>Reactor &amp; Heating</span><span class="zone-tag z2">ZONE 2</span></div>
+      <div class="row">
+        <label>Headspace <b id="vHead">20%</b></label>
+        <input type="range" id="head" min="5" max="40" step="5" value="20" oninput="onBatch()">
+        <div class="hint">Criterion: ≥ 20%. Overfilling can carry foam or molten plastic into the pipe and raise pressure.</div>
+      </div>
+      <div class="row">
+        <label>Target reactor temperature <b id="vTset">480 °C</b></label>
+        <input type="range" id="tset" min="300" max="550" step="10" value="480" oninput="onLive()">
+        <div class="hint">PP and PE crack at roughly 400–500 °C; PVC starts releasing HCl at around 250 °C.</div>
+      </div>
+      <div class="row">
+        <label>Heating rate <b id="vRate">10 °C/min</b></label>
+        <input type="range" id="hrate" min="4" max="20" step="1" value="10" oninput="onLive()">
+      </div>
+      <div class="row">
+        <label>Reactor lid seal</label>
+        <select id="seal" onchange="onLive()">
+          <option value="tight">Airtight (gasket and tight clamps)</option>
+          <option value="leak">Leaky (gaps in the lid)</option>
+        </select>
+      </div>
+      <label class="chk"><input type="checkbox" id="relief" checked onchange="onLive()"> Pressure relief valve (opens at 50 kPa)</label>
+    </div>
+
+    <div class="ptitle"><span>Condenser</span><span class="zone-tag z3">ZONE 3</span></div>
+    <div class="row pyro-only">
+      <label>Condenser pipe diameter (d) <b id="vPd">3.0 cm</b></label>
+      <input type="range" id="pd" min="2" max="5" step="0.5" value="3" oninput="onLive()">
+    </div>
+    <div class="row pyro-only">
+      <label>Submerged pipe length (L) <b id="vPl">1.5 m</b></label>
+      <input type="range" id="pl" min="0.5" max="3" step="0.25" value="1.5" oninput="onLive()">
+    </div>
+    <div class="row">
+      <label>Condenser pipe slope <b id="vSlope">10°</b></label>
+      <input type="range" id="slope" min="0" max="20" step="1" value="10" oninput="onLive()">
+      <div class="hint">Slope &lt; 8° can cause liquid to pool or flow backward.</div>
+    </div>
+    <div class="row pyro-only">
+      <label>Cooling system</label>
+      <select id="cool" onchange="onLive()">
+        <option value="circ">Circulating water (around 30 °C)</option>
+        <option value="static">Static 30 L water bath (warms over time)</option>
+        <option value="air">No water (air cooling)</option>
+      </select>
+    </div>
+
+    <div class="pyro-only">
+      <div class="ptitle"><span>Collector &amp; Exhaust Gas</span><span class="zone-tag z4">ZONE 4</span></div>
+      <div class="row">
+        <label>Water scrubber solution (20 L + universal indicator)</label>
+        <select id="scr" onchange="onLive()">
+          <option value="water">Plain water</option>
+          <option value="alk">0.5 M Ca(OH)₂/NaOH solution</option>
+          <option value="none">No scrubber</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Blueprint-to-prototype scale</label>
+        <select id="scale" onchange="onLive()">
+          <option value="5">1 : 5</option>
+          <option value="10">1 : 10</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Simulation speed <b id="vSpeed">3 min/s</b></label>
+        <input type="range" id="speed" min="0.5" max="10" step="0.5" value="3" oninput="onLive()">
+      </div>
+      <div class="btns">
+        <button class="btn b-run" id="btnRun" onclick="toggleRun()">▶ Start</button>
+        <button class="btn b-reset" onclick="resetSim()">↺ Reset</button>
+      </div>
+    </div>
+
+    <div class="cold-only hide">
+      <div class="row">
+        <label>Prototype reactor lid seal</label>
+        <select id="sealC" onchange="onLive()">
+          <option value="tight">Airtight (rubber gasket and clamps) — P2</option>
+          <option value="leak">Gaps remain — P1</option>
+        </select>
+      </div>
+      <div class="btns">
+        <button class="btn b-run" id="btnAir" onclick="startAir()">60 s Air Pressure Test</button>
+        <button class="btn b-alt" id="btnWater" onclick="startWater()">100 mL Water Flow Test</button>
+      </div>
+      <div class="hint" style="margin-top:8px">Flame-free cold tests: use low-pressure air and soapy water to detect leaks, and 100 mL of water to test the condenser slope (target: ≥ 90% recovery).</div>
+    </div>
+  </div>
+
+  <!-- ================= RIGHT ================= -->
+  <div class="right">
+    <div class="panel">
+      <div class="status st-idle" id="status">Ready — set the plastic composition and parameters, then press ▶ Start.</div>
+      <canvas id="scene"></canvas>
+      <div class="gauges">
+        <div class="gg"><div class="l">Time</div><div class="v" id="gT">0 min</div></div>
+        <div class="gg"><div class="l">Reactor temperature</div><div class="v" id="gTemp">30 °C</div></div>
+        <div class="gg"><div class="l">Pressure</div><div class="v" id="gP">0 kPa</div></div>
+        <div class="gg"><div class="l" id="gTwL">Cooling water</div><div class="v" id="gTw">30 °C</div></div>
+        <div class="gg"><div class="l" id="gEffL">Condenser efficiency</div><div class="v" id="gEff">–</div></div>
+        <div class="gg"><div class="l">Scrubber pH</div><div class="v" id="gPH">7.0</div></div>
+        <div class="gg"><div class="l" id="gOilL">Oil collected</div><div class="v" id="gOil">0.0 L</div></div>
+      </div>
+    </div>
+
+    <div class="two pyro-only">
+      <div class="panel">
+        <div class="ptitle"><span>Process Chart</span><span style="font-size:.7rem;color:#7a6a5c">updated every simulated minute</span></div>
+        <canvas id="chart"></canvas>
+        <div class="legend">
+          <span><i class="sw" style="background:#8a3744"></i>Temperature (°C, 0–600)</span>
+          <span><i class="sw" style="background:#00615c"></i>Pressure (kPa, 0–120)</span>
+          <span><i class="sw" style="background:#c27549"></i>Oil collected (L)</span>
+          <span><i class="sw" style="background:#9fbf2a"></i>HCl generated (kg)</span>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ptitle"><span>Calculation Steps (Secondary Data)</span></div>
+        <button type="button" class="btn" aria-controls="calc" aria-expanded="false" onclick="const steps = document.getElementById('calc'); steps.hidden = !steps.hidden; this.setAttribute('aria-expanded', String(!steps.hidden)); this.textContent = steps.hidden ? 'Show calculation steps' : 'Hide calculation steps';">Show calculation steps</button>
+        <div class="calc" id="calc" hidden></div>
+      </div>
+    </div>
+
+    <div class="two pyro-only">
+      <div class="panel">
+        <div class="ptitle"><span>Theoretical Predictions vs. Simulation Results</span></div>
+        <table>
+          <thead><tr><th>Product</th><th style="text-align:right">Prediction from secondary data</th><th style="text-align:right">Simulation results</th></tr></thead>
+          <tbody id="resBody"></tbody>
+        </table>
+        <div class="note">Prediction = m × literature yield (without losses). Simulation results account for temperature, condenser efficiency, leaks, pressure relief, and blockage.</div>
+      </div>
+      <div class="panel">
+        <div class="ptitle"><span>Findings &amp; Design Evaluation</span></div>
+        <ul class="find" id="findings"></ul>
+      </div>
+    </div>
+
+    <div class="panel cold-only hide">
+      <div class="ptitle"><span>Prototype Cold Test Results</span></div>
+      <ul class="find" id="coldRes"><li class="f-warn">Select a test in the left panel.</li></ul>
+    </div>
+
+    <div class="note" lang="id">
+      Model edukatif yang disederhanakan. Rendemen dan densitas curah memakai rentang literatur (Sharuddin et al., 2016; Miandad et al., 2017):
+      PP 75/15/10, LDPE &amp; HDPE 70/18/12 (minyak/gas/arang, %-massa); PET menghasilkan sublimat asam tereftalat; PVC melepas ±55% massa sebagai HCl.
+      Pirolisis termal nyata <b>tidak</b> dilakukan murid — di sekolah purwarupa diuji secara dingin (mode ②).
+    </div>
+  </div>
+</div>
+
+<footer class="note" style="text-align:center">Built with coding assistance from Claude Opus 5.5 and GPT Sol 6.</footer>
+
+<script>
+/* =====================================================================
+   DATA POLIMER (data sekunder, %-massa)
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const KEYS = ['PP','LDPE','HDPE','PET','PVC'];
+const POLY = {
+  PP:   {code:'#5', rho:0.30, oil:0.75, gas:0.15, char:0.10, Tmid:430, w:14, oilRho:0.77, color:'#e9b44c'},
+  LDPE: {code:'#4', rho:0.25, oil:0.70, gas:0.18, char:0.12, Tmid:445, w:14, oilRho:0.78, color:'#8fb9d8'},
+  HDPE: {code:'#2', rho:0.33, oil:0.70, gas:0.18, char:0.12, Tmid:455, w:14, oilRho:0.79, color:'#5f9e8c'},
+  PET:  {code:'#1', rho:0.35, oil:0.15, sub:0.15, gas:0.53, char:0.17, Tmid:420, w:15, oilRho:0.85, color:'#e4e2ef'},
+  PVC:  {code:'#3', rho:0.38, hcl:0.55, oil:0.12, gas:0.10, char:0.23, TmidCl:300, wCl:16, Tmid:450, w:15, oilRho:0.88, color:'#c96b6b'}
+};
+const KMAX = 0.12;           // laju maksimum (1/menit)
+const SCRUB_V = 20;          // volume larutan scrubber (L)
+const BASE_MOL = 10;         // 20 L × 0,5 M
+const sig = x => 1/(1+Math.exp(-x));
+const fmt = (v,d=1) => Number(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+const LBL = {z1:'Z1 · Pre-treatment', z2:'Z2 · Airtight Reactor', z3:'Z3 · Condenser', z4:'Z4 · Collector & Scrubber',
+      hopper:'Shredder & feeder', reactor:'Reactor', cond:'Condenser pipe + water jacket', coll:'Oil collector',
+      scr:'Water scrubber', chim:'Exhaust stack', valve:'Relief valve', none:'NO SCRUBBER', pump:'Air pump (test)',
+      water:'Test water collector', loaded:'Batch loaded ✓', noWater:'no cooling water', boil:'WATER BOILING!'
+};
+let mode = 'pyro';
+const T_ = k => LBL[k];
+
+/* =====================================================================
+   UI: komposisi
+   ===================================================================== */
+const defaultW = {PP:40, LDPE:35, HDPE:25, PET:0, PVC:0};
+(function buildComp(){
+  let h='';
+  KEYS.forEach(k=>{
+    h += `<div class="comp"><span><i class="sw" style="background:${POLY[k].color};border:1px solid #9a8a70"></i>${k} ${POLY[k].code}</span>
+          <input type="range" id="w${k}" min="0" max="100" step="5" value="${defaultW[k]}" oninput="onBatch()">
+          <span class="pct" id="p${k}">0%</span></div>`;
+  });
+  $('compRows').innerHTML = h;
+})();
+
+function preset(obj){ KEYS.forEach(k=>$('w'+k).value = obj[k]||0); onBatch(true); }
+
+function readInputs(){
+  const w={}; let sum=0;
+  KEYS.forEach(k=>{w[k]=+$('w'+k).value; sum+=w[k];});
+  if(sum<=0){ w.PP=1; sum=1; }
+  const fr={}; KEYS.forEach(k=>fr[k]=w[k]/sum);
+  return { fr, M:+$('mass').value, h:+$('head').value/100, Tset:+$('tset').value, rate:+$('hrate').value,
+    seal:$('seal').value, relief:$('relief').checked, d:+$('pd').value, Lm:+$('pl').value, slope:+$('slope').value,
+    cool:$('cool').value, scr:$('scr').value, scale:+$('scale').value, speed:+$('speed').value };
+}
+
+function theory(I){
+  const m={}; KEYS.forEach(k=>m[k]=I.M*I.fr[k]);
+  let vBulk=0; KEYS.forEach(k=>vBulk+=m[k]/POLY[k].rho);
+  const vReact = vBulk/(1-I.h);
+  const D = Math.cbrt(vReact*1000/(Math.PI/4*1.5)), H = 1.5*D;
+  let oil=0, oilV=0, gas=0, ch=0, hcl=0, sub=0;
+  KEYS.forEach(k=>{const p=POLY[k]; oil+=m[k]*p.oil; oilV+=m[k]*p.oil/p.oilRho; gas+=m[k]*p.gas; ch+=m[k]*p.char; hcl+=m[k]*(p.hcl||0); sub+=m[k]*(p.sub||0);});
+  const A = Math.PI*I.d*I.Lm*100;
+  return {m, vBulk, rhoMix:I.M/vBulk, vReact, D, H, oil, oilV, gas, ch, hcl, sub, A, oilRho: oil>0? oil/oilV : 0.78};
+}
+
+function updateLabels(){
+  const I = readInputs();
+  KEYS.forEach(k=>$('p'+k).textContent = Math.round(I.fr[k]*100)+'%');
+  $('stack').innerHTML = KEYS.map(k=>I.fr[k]>0?`<div style="width:${I.fr[k]*100}%;background:${POLY[k].color}" title="${k}"></div>`:'').join('');
+  $('vMass').textContent = I.M+' kg';
+  $('vHead').textContent = Math.round(I.h*100)+'%';
+  $('vTset').textContent = I.Tset+' °C';
+  $('vRate').textContent = I.rate+' °C/min';
+  $('vPd').textContent = fmt(I.d,1)+' cm';
+  $('vPl').textContent = fmt(I.Lm,2)+' m';
+  $('vSlope').textContent = I.slope+'°';
+  $('vSpeed').textContent = fmt(I.speed,1)+' min/s';
+}
+
+function onBatch(force){
+  updateLabels();
+  if(!S || S.t===0 || force || S.done || S.rupt){ resetSim(); }
+  else { setStatus('Composition, mass, and headspace are batch settings — press ↺ Reset to apply changes.','st-warn'); }
+}
+function onLive(){ updateLabels(); if(mode==='pyro'){ updateCalc(); } }
+
+/* =====================================================================
+   STATE SIMULASI
+   ===================================================================== */
+let S = null, parts = [], deposits = [], flakes = [], lastUI = 0;
+
+function resetSim(){
+  const I = readInputs(), Th = theory(I);
+  S = { I, Th, t:0, T:30, Tw:30, P:0, running:false, done:false, rupt:false, heater:true,
+        rem:{}, remCl:0, remRes:0, oilKg:0, oilL:0, charKg:0, gasKg:0, unc:0, hclGen:0, hclCap:0, hclEsc:0, acid:0,
+        subDep:0, wax:0, clog:0, blockedVap:0, blockedGas:0, blockedHcl:0, leakLoss:0, ventLoss:0, burn:0, corr:0, clOil:0, pMax:0, vents:0, venting:false,
+        eff:0, effSum:0, effW:0, scrEff:0, lowT:0, boiled:false, foam:0, rates:{vap:0,gas:0,hcl:0,sub:0},
+        hist:[{t:0,T:30,P:0,L:0,H:0}], histT:0, spawn:{vap:0,gas:0,hcl:0,sub:0,leak:0,vent:0} };
+  KEYS.forEach(k=>{ if(k==='PVC'){ S.remCl=Th.m.PVC*0.55; S.remRes=Th.m.PVC*0.45; } else S.rem[k]=Th.m[k]; });
+  parts=[]; deposits=[];
+  makeFlakes();
+  $('btnRun').textContent='▶ Start';
+  setStatus('Ready — set the plastic composition and parameters, then press ▶ Start.','st-idle');
+  updateCalc(); updateResults(); updateFindings(); updateGauges(); drawChart(); updateStatus();
+}
+
+function toggleRun(){
+  if(!S || S.done || S.rupt){ resetSim(); }
+  S.running = !S.running;
+  $('btnRun').textContent = S.running ? '❚❚ Pause' : '▶ Resume';
+}
+
+function reactiveRemaining(){ return KEYS.reduce((a,k)=>a+(k==='PVC'?S.remCl+S.remRes:S.rem[k]),0); }
+
+function step(dt){
+  const I = S.I, Th = S.Th, op = readInputs();
+  ['Tset','rate','seal','relief','d','Lm','slope','cool','scr','scale'].forEach(k=>I[k]=op[k]);
+  Th.A = Math.PI*I.d*I.Lm*100;
+
+  // ---- pemanasan ----
+  if(S.heater){ S.T = S.T<I.Tset ? Math.min(I.Tset, S.T+I.rate*dt) : Math.max(I.Tset, S.T-4*dt); }
+  else S.T = Math.max(30, S.T-6*dt);
+
+  // ---- kinetika dekomposisi (orde-1, laju sigmoid terhadap suhu) ----
+  let vap=0, vapV=0, gas=0, ch=0, hcl=0, sub=0;
+  ['PP','LDPE','HDPE','PET'].forEach(k=>{
+    const p=POLY[k], kk=KMAX*sig((S.T-p.Tmid)/p.w), dm=S.rem[k]*(1-Math.exp(-kk*dt));
+    S.rem[k]-=dm; vap+=dm*p.oil; vapV+=dm*p.oil/p.oilRho; gas+=dm*p.gas; ch+=dm*p.char; if(p.sub) sub+=dm*p.sub;
+  });
+  const pv=POLY.PVC;
+  const kc=KMAX*1.3*sig((S.T-pv.TmidCl)/pv.wCl), dc=S.remCl*(1-Math.exp(-kc*dt)); S.remCl-=dc; hcl+=dc;
+  const kr=KMAX*sig((S.T-pv.Tmid)/pv.w), dr=S.remRes*(1-Math.exp(-kr*dt)); S.remRes-=dr;
+  vap+=dr*0.12/0.45; vapV+=dr*0.12/0.45/pv.oilRho; gas+=dr*0.10/0.45; ch+=dr*0.23/0.45;
+
+  // ---- kebocoran tutup: uap lolos + udara masuk (sebagian uap terbakar) ----
+  const leakF = I.seal==='leak'?0.18:0, burnF = I.seal==='leak'?0.07:0;
+  const vLeak=vap*leakF, vBurn=vap*burnF; let vOut=vap-vLeak-vBurn;
+  const hLeak=hcl*leakF, hOut=hcl-hLeak, gOut=gas*(1-leakF);
+  S.leakLoss+=vLeak; S.burn+=vBurn;
+
+  // ---- headspace kecil → busa/lelehan terbawa (lilin) ke pipa ----
+  if(I.h<0.2 && S.T>350 && vap>0){ S.wax += vap*0.10*(0.2-I.h)/0.2; }
+  S.foam = (I.h<0.2 && S.T>350) ? (0.2-I.h)/0.15 : 0;
+  const cap = 0.35*Math.pow(I.d/3,2)*(I.Lm/1.5);
+  S.clog = Math.min(0.92,(S.subDep+S.wax)/cap);
+
+  // ---- tekanan ----
+  const G = (vOut+gOut+hOut)/Math.max(dt,1e-6);
+  const Pc = 22*G/Math.pow(I.d/3,2)*(1+5*S.clog)*Math.sqrt(0.2/Math.max(I.h,0.05))*(leakF?0.55:1);
+  S.P += (Pc-S.P)*Math.min(1,dt*3);
+  let ventF=0;
+  if(I.relief && S.P>50){ ventF=Math.min(0.6,(S.P-50)/S.P*1.5); S.P=50+(S.P-50)*0.4; if(!S.venting) S.vents++; S.venting=true; }
+  else S.venting=false;
+  S.pMax=Math.max(S.pMax,S.P);
+  if(!I.relief && S.P>100){ S.rupt=true; S.running=false; S.heater=false; $('btnRun').textContent='▶ Start'; }
+  const vVent=vOut*ventF; vOut-=vVent; S.ventLoss+=vVent;
+
+  // PET deposits restrict the entire outlet, not just oil condensation.
+  // At 75% blockage, no new vapor or gas reaches the collector/scrubber.
+  const flow = S.clog>=0.75 ? 0 : Math.pow(1-S.clog/0.75,2);
+  const vThrough=vOut*flow, gThrough=gOut*flow, hThrough=hOut*flow;
+  S.blockedVap+=vOut-vThrough; S.blockedGas+=gOut-gThrough; S.blockedHcl+=hOut-hThrough;
+  // ---- condenser (NTU model) ----
+  const NTU = Th.A/600;
+  const cf = I.cool==='air'?0.2 : I.cool==='static'? Math.max(0.06,(97-S.Tw)/67) : 1;
+  const sf = I.slope<2?0.7 : I.slope<8? 0.7+0.3*(I.slope-2)/6 : 1;
+  const eff = Math.max(0,(1-Math.exp(-NTU*cf))*sf);
+  S.eff = eff*flow;
+  const cond=vThrough*eff, unc=vThrough-cond, rho = vapV>0? vap/vapV : 0.78;
+  S.oilKg+=cond; S.oilL+=cond/rho; S.unc+=unc;
+  if(vOut>0){ S.effSum+=S.eff*vOut; S.effW+=vOut; }
+  S.subDep += sub*0.85;
+
+  // ---- suhu air pendingin ----
+  if(I.cool==='static'){ S.Tw += (cond*1100+unc*500)/125.4; S.Tw -= (S.Tw-30)*0.004*dt; if(S.Tw>=100){S.Tw=100;S.boiled=true;} }
+  else if(I.cool==='circ'){ S.Tw += (30+4*Math.min(1,G)-S.Tw)*Math.min(1,dt); }
+  else S.Tw = 30;
+
+  // ---- produk lain & scrubber ----
+  S.charKg+=ch; S.gasKg+=gThrough+unc; S.hclGen+=hcl;
+  let es=0;
+  if(I.scr==='water') es=0.85; else if(I.scr==='alk') es = (S.acid<BASE_MOL)?0.99:0.85;
+  S.scrEff=es;
+  const capK=hThrough*es; S.hclCap+=capK; S.acid+=capK*1000/36.46; S.hclEsc+=hThrough-capK+hLeak;
+  S.corr+=hcl; S.clOil+=hcl*0.015*0.972;
+
+  S.rates={vap:vap/dt, gas:gas/dt, hcl:hcl/dt, sub:sub/dt};
+  S.spawn.vap+=vThrough*45; S.spawn.gas+=gThrough*35; S.spawn.hcl+=hThrough*90; S.spawn.sub+=sub*140;
+  if(flow===0){ S.spawn.vap=0; S.spawn.gas=0; S.spawn.hcl=0; }
+  S.spawn.leak+=(vLeak+hLeak)*60; S.spawn.vent+=vVent*40;
+
+  S.t+=dt;
+  if(S.t-S.histT>=1){ S.hist.push({t:S.t,T:S.T,P:S.P,L:S.oilL,H:S.hclGen}); S.histT=S.t; }
+
+  const prod=(vap+gas+hcl)/dt;
+  if(S.T>=I.Tset-1 && prod<0.004*I.M) S.lowT+=dt; else S.lowT=0;
+  if(reactiveRemaining()<0.003*I.M || S.lowT>15 || S.t>360){ S.done=true; S.running=false; S.heater=false; $('btnRun').textContent='▶ Run Again'; }
+}
+
+function pHval(){
+  const I=S.I; if(I.scr==='none') return null;
+  const base = I.scr==='alk'?BASE_MOL:0, ex=S.acid-base;
+  if(ex>1e-7*SCRUB_V) return Math.max(0,Math.min(7,-Math.log10(ex/SCRUB_V)));
+  if(ex<-1e-7*SCRUB_V) return Math.min(14,Math.max(7,14+Math.log10(-ex/SCRUB_V)));
+  return 7;
+}
+function pHcolor(p){
+  if(p===null) return 'rgba(0,0,0,0)';
+  const stops=[[0,'#c0392b'],[3,'#e67e22'],[5,'#f1c40f'],[7,'#3fae6a'],[9,'#1f8a9e'],[11,'#3a5ba8'],[14,'#6e3f8f']];
+  for(let i=1;i<stops.length;i++) if(p<=stops[i][0]) return stops[i][1];
+  return stops[stops.length-1][1];
+}
+
+/* =====================================================================
+   CANVAS & GEOMETRI
+   ===================================================================== */
+const cv=$('scene'), g=cv.getContext('2d'), W=1100, H=560;
+function fit(c,ctx,w,h){ const dpr=window.devicePixelRatio||1; c.width=c.clientWidth*dpr; c.height=c.clientWidth*h/w*dpr; ctx.setTransform(c.width/w,0,0,c.height/h,0,0); }
+window.addEventListener('resize',()=>{ fit(cv,g,W,H); fit(ch,cg,CW,CH); drawChart(); });
+
+function geo(){
+  const slope=+$('slope').value, th=slope*1.6*Math.PI/180;
+  const R={x:190,y:190,w:140,h:200};
+  const cs={x:380,y:104}, ce={x:cs.x+300*Math.cos(th), y:cs.y+300*Math.sin(th)};
+  const col={x:ce.x-42,y:400,w:84,h:105};
+  const port={x:col.x+col.w,y:414};
+  const riseX=port.x+28;
+  const scr={x:858,y:322,w:92,h:183,water:372};
+  const dip={x:893,y:482}, chim={x:935,top:150};
+  const outlet=[{x:285,y:182},{x:285,y:114},{x:298,y:104},cs];
+  return {slope,th,R,cs,ce,col,port,riseX,scr,dip,chim,outlet};
+}
+const lerp=(a,b,u)=>({x:a.x+(b.x-a.x)*u, y:a.y+(b.y-a.y)*u});
+
+/* ---- tinggi isi reaktor (piksel) ---- */
+function reactorLevels(G){
+  const inH=G.R.h-14, bottom=G.R.y+G.R.h-6;
+  if(mode!=='pyro'||!S) return {bottom, surf:bottom, charH:0, polyH:0, meltF:0, inH};
+  const V=S.Th.vReact;
+  const charH=S.charKg/0.35/V*inH;
+  let vb=0, vm=0, mt=0;
+  KEYS.forEach(k=>{ const r = k==='PVC'? S.remCl+S.remRes : S.rem[k]; vb+=r/POLY[k].rho; vm+=r/0.9; mt+=r; });
+  const meltF=Math.min(1,Math.max(0,(S.T-110)/80));
+  const polyH=Math.min(inH-charH,(vb*(1-meltF)+vm*meltF)/V*inH);
+  return {bottom, surf:bottom-charH-polyH, charH, polyH, meltF, inH, mt};
+}
+function meltColor(){
+  let r=0,gg=0,b=0,t=0;
+  KEYS.forEach(k=>{ const m = k==='PVC'? S.remCl+S.remRes : S.rem[k]; if(m<=0) return; const c=POLY[k].color;
+    r+=parseInt(c.substr(1,2),16)*m; gg+=parseInt(c.substr(3,2),16)*m; b+=parseInt(c.substr(5,2),16)*m; t+=m; });
+  if(t<=0) return 'rgb(60,50,40)';
+  const dark = Math.min(0.55, S.T>300 ? (S.T-300)/400 : 0);
+  return `rgb(${Math.round(r/t*(1-dark))},${Math.round(gg/t*(1-dark))},${Math.round(b/t*(1-dark))})`;
+}
+function makeFlakes(){
+  flakes=[];
+  const I=S?S.I:readInputs();
+  for(let i=0;i<110;i++){
+    let u=Math.random(), acc=0, key='PP';
+    for(const k of KEYS){ acc+=I.fr[k]; if(u<=acc){key=k;break;} }
+    flakes.push({u:Math.random(), v:Math.random(), c:POLY[key].color, w:5+Math.random()*7, h:3+Math.random()*3, a:Math.random()*Math.PI});
+  }
+}
+
+/* =====================================================================
+   PARTIKEL
+   ===================================================================== */
+function mkPath(pts){ const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y)); return {pts,cum,len:cum[cum.length-1]}; }
+function posAt(p,s){ if(s>=p.len) return p.pts[p.pts.length-1]; let i=1; while(p.cum[i]<s) i++; const f=(s-p.cum[i-1])/((p.cum[i]-p.cum[i-1])||1); return lerp(p.pts[i-1],p.pts[i],f); }
+function addPath(type,pts,v,onEnd,extra){ if(parts.length>700) return; parts.push(Object.assign({kind:'path',type,path:mkPath(pts),s:0,v,onEnd},extra||{})); }
+function addFree(type,x,y,vx,vy,life,r){ if(parts.length>760) return; parts.push({kind:'free',type,x,y,vx,vy,life,max:life,r}); }
+
+function gasRoute(G){
+  const base=[{x:G.ce.x,y:412},{x:G.port.x,y:G.port.y},{x:G.riseX,y:G.port.y},{x:G.riseX,y:290},{x:G.dip.x,y:290}];
+  if(S && S.I.scr==='none') return base.concat([{x:G.chim.x,y:290},{x:G.chim.x,y:G.chim.top}]);
+  return base.concat([{x:G.dip.x,y:G.dip.y}]);
+}
+function reactorStart(G,L){ return {x:G.R.x+16+Math.random()*(G.R.w-32), y:L.surf-3}; }
+function toReactorTop(G){ return [{x:285,y:G.R.y+4}].concat(G.outlet); }
+
+function arriveGas(type){ return function(){
+  const G=geo();
+  if(S.I.scr==='none'){ plume(type==='hcl'?'plumeH':'plume'); return; }
+  addFree(type==='hcl'?'bubH':'bub', G.dip.x+(Math.random()-0.5)*6, G.dip.y, (Math.random()-0.5)*0.3, -1.1-Math.random()*0.5, 999, 2.5+Math.random()*2);
+};}
+function plume(type){ const G=geo(); addFree(type, G.chim.x+(Math.random()-0.5)*6, G.chim.top-4, 0.25+Math.random()*0.5, -0.5-Math.random()*0.4, 140, 3); }
+
+function spawnPyro(){
+  const G=geo(), L=reactorLevels(G), sp=S.speedV=Math.min(4,1.6+S.I.speed*0.25);
+  if(S.clog>=0.75){
+    parts=parts.filter(p=>p.kind!=='path' || !['vap','unc','gas','hcl','drop'].includes(p.type));
+  }
+  let n;
+  n=Math.min(6,Math.floor(S.spawn.vap)); S.spawn.vap-=n;
+  for(let i=0;i<n;i++){
+    const st=reactorStart(G,L);
+    if(Math.random()<S.eff){
+      const cp=lerp(G.cs,G.ce,0.15+Math.random()*0.7);
+      addPath('vap',[st].concat(toReactorTop(G),[cp]),sp,function(){
+        const G2=geo(), L2=oilSurface(G2);
+        addPath('drop',[cp,G2.ce,{x:G2.ce.x,y:404},{x:G2.ce.x+(Math.random()-0.5)*20,y:L2}],sp*0.9,null);
+      });
+    } else addPath('unc',[st].concat(toReactorTop(G),[G.ce],gasRoute(G)),sp,arriveGas('gas'));
+  }
+  n=Math.min(4,Math.floor(S.spawn.gas)); S.spawn.gas-=n;
+  for(let i=0;i<n;i++) addPath('gas',[reactorStart(G,L)].concat(toReactorTop(G),[G.ce],gasRoute(G)),sp,arriveGas('gas'));
+  n=Math.min(7,Math.floor(S.spawn.hcl)); S.spawn.hcl-=n;
+  for(let i=0;i<n;i++) addPath('hcl',[reactorStart(G,L)].concat(toReactorTop(G),[G.ce],gasRoute(G)),sp,arriveGas('hcl'));
+  n=Math.min(4,Math.floor(S.spawn.sub)); S.spawn.sub-=n;
+  for(let i=0;i<n;i++){
+    const u=0.05+Math.random()*0.6, off=(Math.random()-0.5)*7;
+    addPath('sub',[reactorStart(G,L)].concat(toReactorTop(G),[lerp(G.cs,G.ce,u)]),sp,function(){ if(deposits.length<400) deposits.push({u,off}); });
+  }
+  n=Math.min(4,Math.floor(S.spawn.leak)); S.spawn.leak-=n;
+  for(let i=0;i<n;i++) addFree(S.rates.hcl>0.001&&Math.random()<0.5?'leakH':'leak', G.R.x+Math.random()*G.R.w, 180, (Math.random()-0.5)*0.6, -0.6-Math.random()*0.5, 90, 3);
+  n=Math.min(4,Math.floor(S.spawn.vent)); S.spawn.vent-=n;
+  for(let i=0;i<n;i++) addFree('vent', 312, 156, (Math.random()-0.2)*0.8, -1.2-Math.random()*0.6, 80, 3);
+}
+function oilSurface(G){
+  const capL=Math.max(5,S.Th.oilV*1.25), f=Math.min(1,S.oilL/capL);
+  return G.col.y+G.col.h-6-f*(G.col.h-16);
+}
+
+function updateParts(){
+  const G=geo();
+  for(let i=parts.length-1;i>=0;i--){
+    const p=parts[i];
+    if(p.kind==='path'){
+      p.s+=p.v;
+      if(p.s>=p.path.len){ parts.splice(i,1); if(p.onEnd) p.onEnd(); }
+    } else {
+      p.x+=p.vx; p.y+=p.vy; p.life--;
+      if(p.type==='bub'||p.type==='bubH'||p.type==='bubA'){
+        p.x+=Math.sin(p.y*0.25)*0.35;
+        const surf = mode==='cold'? G.scr.water : G.scr.water;
+        if(p.y<=surf){
+          parts.splice(i,1);
+          if(mode==='cold') continue;
+          if(p.type==='bubH'){
+            if(Math.random()<S.scrEff) addFree('abs',p.x,surf,0,-0.2,25,2);
+            else addPath('smokeH',[{x:p.x,y:surf},{x:G.chim.x,y:G.scr.y+8},{x:G.chim.x,y:G.chim.top}],2.2,()=>plume('plumeH'));
+          } else addPath('smoke',[{x:p.x,y:surf},{x:G.chim.x,y:G.scr.y+8},{x:G.chim.x,y:G.chim.top}],2.2,()=>plume('plume'));
+          continue;
+        }
+      } else { p.r+=0.06; }
+      if(p.life<=0) parts.splice(i,1);
+    }
+  }
+}
+
+/* =====================================================================
+   GAMBAR SCENE (palet sampul: indigo, pasir, tembaga, baja, maroon)
+   ===================================================================== */
+function rr(x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
+function txt(s,x,y,col,size,align,weight){ g.font=`${weight||600} ${size||11}px Segoe UI, sans-serif`; g.fillStyle=col||'#f8f0df'; g.textAlign=align||'center'; g.textBaseline='middle'; g.fillText(s,x,y); }
+function pill(x,y,s,bg){ g.font='700 11.5px Segoe UI, sans-serif'; const w=g.measureText(s).width+18; rr(x-w/2,y,w,22,11); g.fillStyle=bg; g.fill(); txt(s,x,y+11.5,'#fff',11.5,'center',700); }
+function tag(x,y,s,bg,fg){ g.font='700 11px Segoe UI, sans-serif'; const w=g.measureText(s).width+12; rr(x,y-10,w,20,6); g.fillStyle=bg; g.fill(); txt(s,x+6,y,fg||'#f8f0df',11,'left',700); }
+function line(pts,w,col){ g.lineCap='round'; g.lineJoin='round'; g.beginPath(); pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y)); g.strokeStyle=col; g.lineWidth=w; g.stroke(); }
+function steel(x,w){ const gr=g.createLinearGradient(x,0,x+w,0); gr.addColorStop(0,'#6f7190'); gr.addColorStop(0.3,'#dcdce8'); gr.addColorStop(0.55,'#c4c5d6'); gr.addColorStop(1,'#62647f'); return gr; }
+function can(x,y,w,h){ g.fillStyle=steel(x,w); g.fillRect(x,y,w,h); g.strokeStyle='#3c3e66'; g.lineWidth=2; g.strokeRect(x,y,w,h);
+  g.strokeStyle='rgba(60,62,102,.35)'; g.lineWidth=1; for(let yy=y+9;yy<y+h-3;yy+=9){ g.beginPath(); g.moveTo(x+2,yy); g.lineTo(x+w-2,yy); g.stroke(); } }
+
+function drawScene(){
+  const G=geo(), L=reactorLevels(G), py=(mode==='pyro'&&S);
+  // dinding & meja
+  let gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#5d6898'); gr.addColorStop(0.75,'#484878'); g.fillStyle=gr; g.fillRect(0,0,W,H);
+  g.fillStyle='rgba(248,240,223,.05)'; g.beginPath(); g.moveTo(420,0); g.lineTo(640,0); g.lineTo(820,505); g.lineTo(240,505); g.closePath(); g.fill();
+  g.fillStyle='#c0a890'; g.fillRect(0,505,W,55); g.fillStyle='#a8907a'; g.fillRect(0,505,W,4);
+  // pil zona
+  pill(92,8,T_('z1'),'#00615c'); pill(262,8,T_('z2'),'#8a3744'); pill(520,8,T_('z3'),'#163952'); pill(850,8,T_('z4'),'#c27549');
+
+  // ---------- ZONE 1: hopper / pompa ----------
+  g.beginPath(); g.moveTo(35,235); g.lineTo(150,235); g.lineTo(120,298); g.lineTo(65,298); g.closePath();
+  g.fillStyle=steel(35,115); g.fill(); g.strokeStyle='#3c3e66'; g.lineWidth=2; g.stroke();
+  g.fillStyle='#8b8da8'; g.fillRect(80,298,28,14); g.strokeRect(80,298,28,14);
+  line([{x:94,y:318},{x:190,y:318}],12,'#3c3e66'); line([{x:94,y:318},{x:190,y:318}],7,'#a9abc2');
+  if(py && S.t===0){ flakes.slice(0,45).forEach((f,i)=>{ g.save(); g.translate(55+f.u*75,245+f.v*45*(0.4+f.u*0.6)); g.rotate(f.a); g.fillStyle=f.c; g.fillRect(-f.w/2,-f.h/2,f.w,f.h); g.restore(); }); }
+  else if(py){ txt(T_('loaded'),92,265,'#3c3e66',11,'center',700); }
+  if(mode==='cold'){ // pompa udara
+    g.fillStyle='#8a3744'; rr(30,360,26,80,5); g.fill(); g.fillStyle='#3c3e66'; g.fillRect(38,340,10,22); g.fillRect(26,334,34,7);
+    line([{x:56,y:420},{x:72,y:420},{x:72,y:330},{x:94,y:318}],4,'#2f3157');
+    txt(T_('pump'),92,470,'#f8f0df',10.5);
+  }
+  txt(T_('hopper'),92,530,'#231f20',11.5,'center',700);
+
+  // ---------- ZONE 2: kompor + reaktor ----------
+  g.strokeStyle='#2f3157'; g.lineWidth=4; line([{x:212,y:500},{x:228,y:470}],4,'#2f3157'); line([{x:308,y:500},{x:292,y:470}],4,'#2f3157');
+  g.fillStyle='#c27549'; rr(222,430,76,62,14); g.fill(); g.fillStyle='#9c543c'; g.fillRect(222,476,76,6);
+  g.fillStyle='#3c3e66'; g.fillRect(250,418,20,14); g.fillRect(200,398,120,6);
+  const flameOn = mode==='pyro' && S && S.heater && (S.running || S.T>35) && !S.done && !S.rupt;
+  if(flameOn){
+    const k=0.6+Math.min(1,S.I.rate/16)*0.6;
+    for(let i=0;i<7;i++){ const x=215+i*15, hgt=(14+Math.random()*10)*k;
+      g.beginPath(); g.moveTo(x-6,418); g.quadraticCurveTo(x,418-hgt*1.4,x+6,418); g.fillStyle='rgba(233,140,60,.9)'; g.fill();
+      g.beginPath(); g.moveTo(x-3,418); g.quadraticCurveTo(x,418-hgt*0.7,x+3,418); g.fillStyle='rgba(120,170,240,.9)'; g.fill(); }
+  }
+  // badan reaktor
+  can(G.R.x,G.R.y,G.R.w,G.R.h);
+  const ix=G.R.x+12, iw=G.R.w-24, iy=G.R.y+8;
+  g.fillStyle='#24253f'; g.fillRect(ix,iy,iw,G.R.h-14);
+  if(py){
+    // arang
+    g.fillStyle='#151515'; g.fillRect(ix,L.bottom-L.charH,iw,L.charH);
+    for(let i=0;i<L.charH*1.5;i++){ g.fillStyle='rgba(80,80,80,.6)'; g.fillRect(ix+Math.random()*iw, L.bottom-Math.random()*L.charH,2,2); }
+    // plastik: serpihan → lelehan
+    if(L.polyH>0.5){
+      if(L.meltF<1){ g.globalAlpha=1-L.meltF;
+        const top=L.bottom-L.charH-L.polyH;
+        flakes.forEach(f=>{ g.save(); g.translate(ix+4+f.u*(iw-8), top+3+f.v*(L.polyH-4)); g.rotate(f.a); g.fillStyle=f.c; g.fillRect(-f.w/2,-f.h/2,f.w,f.h); g.restore(); });
+        g.globalAlpha=1; }
+      if(L.meltF>0){ g.globalAlpha=L.meltF; g.fillStyle=meltColor(); g.fillRect(ix,L.surf,iw,L.polyH); g.globalAlpha=1;
+        const nb=Math.min(25,Math.floor((S.rates.vap+S.rates.gas+S.rates.hcl)*30));
+        for(let i=0;i<nb;i++){ g.beginPath(); g.arc(ix+Math.random()*iw, L.surf+Math.random()*L.polyH, 1.5+Math.random()*2.5,0,7); g.strokeStyle='rgba(255,235,200,.55)'; g.lineWidth=1; g.stroke(); }
+      }
+      if(S.foam>0 && S.running){ const fh=Math.min(L.surf-iy, 10+S.foam*28); g.fillStyle='rgba(240,230,210,.55)';
+        for(let i=0;i<30;i++){ g.beginPath(); g.arc(ix+Math.random()*iw, L.surf-Math.random()*fh, 2+Math.random()*3,0,7); g.fill(); } }
+    }
+    // korosi HCl
+    const rust=Math.min(1,S.corr/1.2);
+    if(rust>0.02){ g.fillStyle=`rgba(156,84,60,${0.5*rust})`; for(let i=0;i<40*rust;i++){ const rx=G.R.x+((i*37)%G.R.w), ry=G.R.y+((i*53)%G.R.h); g.beginPath(); g.arc(rx,ry,2+(i%4),0,7); g.fill(); } }
+    tag(G.R.x+G.R.w+8, G.R.y+30, `T ${Math.round(S.T)} °C`, '#163952');
+    tag(G.R.x+G.R.w+8, G.R.y+56, `P ${fmt(S.P,0)} kPa`, S.P>50?'#8a3744':'#00615c');
+    tag(G.R.x+G.R.w+8, G.R.y+82, `V ${fmt(S.Th.vReact,0)} L`, '#6e5375');
+  }
+  // tutup + gasket
+  const sealVal = mode==='pyro'? $('seal').value : $('sealC').value;
+  g.fillStyle='#8f91ab'; g.fillRect(G.R.x-6,180,G.R.w+12,10); g.strokeStyle='#3c3e66'; g.lineWidth=2; g.strokeRect(G.R.x-6,180,G.R.w+12,10);
+  g.fillStyle= sealVal==='tight' ? '#00615c' : '#8a3744'; g.fillRect(G.R.x-4,188,G.R.w+8,3);
+  if(sealVal==='leak'){ g.fillStyle='#24253f'; [205,262,318].forEach(x=>g.fillRect(x,186,9,6)); }
+  // manometer
+  line([{x:222,y:180},{x:222,y:168}],4,'#3c3e66');
+  g.beginPath(); g.arc(222,154,15,0,7); g.fillStyle='#f8f0df'; g.fill(); g.strokeStyle='#3c3e66'; g.lineWidth=2.5; g.stroke();
+  const Pdisp = py? S.P : (C.test==='air'? C.P : 0);
+  const ang=Math.PI*0.75+Math.PI*1.5*Math.min(Pdisp,120)/120;
+  g.beginPath(); g.moveTo(222,154); g.lineTo(222+11*Math.cos(ang),154+11*Math.sin(ang)); g.strokeStyle='#8a3744'; g.lineWidth=2; g.stroke();
+  // katup pengaman
+  const reliefOn = mode==='pyro'? $('relief').checked : true;
+  g.fillStyle=reliefOn?'#8a3744':'#7b7b8f'; g.fillRect(306,162,12,18); g.beginPath(); g.arc(312,160,7,0,7); g.fill();
+  if(!reliefOn){ line([{x:304,y:152},{x:320,y:168}],2.5,'#f8f0df'); line([{x:320,y:152},{x:304,y:168}],2.5,'#f8f0df'); }
+  txt(T_('valve'),330,146,'#f8f0df',10,'left',600);
+  txt(T_('reactor'),260,530,'#231f20',11.5,'center',700);
+
+  // pipa keluaran tembaga
+  line(G.outlet,12,'#7a4a2e'); line(G.outlet,7,'#c27549');
+  if(py && S.corr>0.05){ g.globalAlpha=Math.min(0.7,S.corr); line(G.outlet,7,'#9c543c'); g.globalAlpha=1; }
+
+  // ---------- ZONE 3: kondensor ----------
+  const coolMode = mode==='pyro'? $('cool').value : 'circ';
+  const Tw = py? S.Tw : 30, hot=Math.min(1,(Tw-30)/70);
+  const jacket = coolMode==='air' ? 'rgba(230,230,240,.18)' : `rgba(${Math.round(110+120*hot)},${Math.round(180-80*hot)},${Math.round(225-140*hot)},.55)`;
+  const jA=lerp(G.cs,G.ce,0.06), jB=lerp(G.cs,G.ce,0.94);
+  line([jA,jB],42,'rgba(240,240,250,.35)'); line([jA,jB],38,jacket);
+  line([G.cs,G.ce],9,'#5d5f80'); line([G.cs,G.ce],5,'#b5b7cc');
+  // nosel air pendingin
+  const nx=-Math.sin(G.th), ny=Math.cos(G.th);
+  const nA=lerp(G.cs,G.ce,0.85), nB=lerp(G.cs,G.ce,0.15);
+  line([{x:nA.x+nx*19,y:nA.y+ny*19},{x:nA.x+nx*32,y:nA.y+ny*32}],6,'#3c3e66');
+  line([{x:nB.x-nx*19,y:nB.y-ny*19},{x:nB.x-nx*32,y:nB.y-ny*32}],6,'#3c3e66');
+  // endapan sublimat PET / lilin
+  deposits.forEach(d=>{ const p=lerp(G.cs,G.ce,d.u); g.fillStyle='rgba(255,255,255,.9)'; g.fillRect(p.x+nx*d.off-1.5,p.y+ny*d.off-1.5,3,3); });
+  if(py && S.wax>0.01){ g.globalAlpha=Math.min(0.8,S.wax*3); line([G.cs,lerp(G.cs,G.ce,0.5)],6,'#e8dcb0'); g.globalAlpha=1; }
+  if(mode==='cold') C.pooled.forEach(d=>{ const p=lerp(G.cs,G.ce,d.u); g.beginPath(); g.arc(p.x,p.y+1,2.6,0,7); g.fillStyle='#4fa3d9'; g.fill(); });
+  const mid=lerp(G.cs,G.ce,0.5);
+  txt(T_('cond'),mid.x-nx*44,mid.y-ny*44,'#f8f0df',11,'center',700);
+  if(coolMode==='air') txt(T_('noWater'),mid.x+nx*40,mid.y+ny*40,'#f2c9a8',10.5);
+  if(py && S.boiled) txt(T_('boil'),mid.x+nx*40,mid.y+ny*40,'#ffb3a8',11,'center',800);
+  if(py && S.clog>0.05) txt(`Blockage ${Math.round(S.clog*100)}%`,mid.x+nx*58,mid.y+ny*58,'#ffffff',10.5,'center',700);
+
+  // pipa turun + penampung
+  line([G.ce,{x:G.ce.x,y:404}],8,'#5d5f80'); line([G.ce,{x:G.ce.x,y:404}],4,'#b5b7cc');
+  can(G.col.x,G.col.y,G.col.w,G.col.h);
+  g.fillStyle='rgba(36,37,63,.85)'; g.fillRect(G.col.x+10,G.col.y+8,G.col.w-20,G.col.h-14);
+  if(py && S.oilL>0){ const sy=oilSurface(G); const ppm=S.oilKg>0?S.clOil/S.oilKg*1e6:0;
+    g.fillStyle= ppm>50 ? '#8f8a3a' : '#d08a3c'; g.fillRect(G.col.x+10,sy,G.col.w-20,G.col.y+G.col.h-6-sy);
+    txt(`${fmt(S.oilL,1)} L`,G.ce.x,G.col.y+G.col.h-18,'#fff',12,'center',800); }
+  if(mode==='cold' && C.rec>0){ const f=Math.min(1,C.rec/120), sy=G.col.y+G.col.h-6-f*(G.col.h-16);
+    g.fillStyle='#4fa3d9'; g.fillRect(G.col.x+10,sy,G.col.w-20,G.col.y+G.col.h-6-sy);
+    txt(`${C.rec} mL`,G.ce.x,G.col.y+G.col.h-18,'#fff',12,'center',800); }
+  txt(mode==='cold'?T_('water'):T_('coll'),G.ce.x,530,'#231f20',11.5,'center',700);
+
+  // ---------- ZONE 4: jalur gas, scrubber, cerobong ----------
+  const scrMode = mode==='pyro'? $('scr').value : 'water';
+  const gr2=[{x:G.port.x,y:G.port.y},{x:G.riseX,y:G.port.y},{x:G.riseX,y:290},{x:G.dip.x,y:290}];
+  line(gr2.concat(scrMode==='none'?[{x:G.chim.x,y:290}]:[{x:G.dip.x,y:G.scr.y}]),6,'#4a4c70');
+  // cerobong
+  g.fillStyle=steel(G.chim.x-8,16); g.fillRect(G.chim.x-8,G.chim.top,16,G.scr.y-G.chim.top); g.strokeStyle='#3c3e66'; g.lineWidth=1.5; g.strokeRect(G.chim.x-8,G.chim.top,16,G.scr.y-G.chim.top);
+  g.fillStyle='#3c3e66'; g.fillRect(G.chim.x-13,G.chim.top-5,26,6);
+  txt(T_('chim'),G.chim.x+52,G.chim.top+40,'#f8f0df',10.5,'center',600);
+  // tabung scrubber
+  const ph = py? pHval() : 7;
+  rr(G.scr.x,G.scr.y,G.scr.w,G.scr.h,10); g.fillStyle='rgba(240,240,250,.18)'; g.fill(); g.strokeStyle='#d8d8e8'; g.lineWidth=2; g.stroke();
+  if(scrMode!=='none'){
+    g.globalAlpha=0.6; g.fillStyle=pHcolor(ph); g.fillRect(G.scr.x+3,G.scr.water,G.scr.w-6,G.scr.y+G.scr.h-3-G.scr.water); g.globalAlpha=1;
+    line([{x:G.dip.x,y:G.scr.y},{x:G.dip.x,y:G.dip.y}],6,'#4a4c70');
+    if(ph!==null) txt(`pH ${fmt(ph,1)}`,G.scr.x+G.scr.w/2,G.scr.y+G.scr.h-16,'#fff',12,'center',800);
+  } else txt(T_('none'),G.scr.x+G.scr.w/2,G.scr.y+G.scr.h/2,'#f2c9a8',10,'center',800);
+  g.fillStyle='#3c3e66'; g.fillRect(G.scr.x-3,G.scr.y-4,G.scr.w+6,7);
+  txt(T_('scr'),G.scr.x+G.scr.w/2,530,'#231f20',11.5,'center',700);
+
+  // ---------- partikel ----------
+  parts.forEach(p=>{
+    let x,y; if(p.kind==='path'){ const q=posAt(p.path,p.s); x=q.x; y=q.y; } else { x=p.x; y=p.y; }
+    const a = p.kind==='free'? Math.max(0,p.life/p.max) : 1;
+    switch(p.type){
+      case 'vap': dot(x,y,3,'rgba(246,208,140,.9)'); break;
+      case 'unc': dot(x,y,2.6,'rgba(236,220,190,.65)'); break;
+      case 'drop': dot(x,y,2.6,'#d08a3c'); break;
+      case 'gas': dot(x,y,2.6,'rgba(214,214,230,.85)'); break;
+      case 'hcl': g.shadowColor='#c6e03a'; g.shadowBlur=8; dot(x,y,3.4,'#c6e03a'); g.shadowBlur=0; break;
+      case 'sub': dot(x,y,2,'#ffffff'); break;
+      case 'smoke': dot(x,y,2.6,'rgba(214,214,230,.8)'); break;
+      case 'smokeH': g.shadowColor='#c6e03a'; g.shadowBlur=8; dot(x,y,3.2,'#c6e03a'); g.shadowBlur=0; break;
+      case 'bub': ring(x,y,p.r,'rgba(255,255,255,.9)'); break;
+      case 'bubA': ring(x,y,p.r,'rgba(255,255,255,.95)'); break;
+      case 'bubH': ring(x,y,p.r,'#d7f04a'); break;
+      case 'plume': dot(x,y,p.r,`rgba(205,205,220,${0.55*a})`); break;
+      case 'plumeH': dot(x,y,p.r+1,`rgba(198,224,58,${0.6*a})`); break;
+      case 'leak': dot(x,y,p.r,`rgba(235,235,245,${0.6*a})`); break;
+      case 'leakH': dot(x,y,p.r,`rgba(198,224,58,${0.6*a})`); break;
+      case 'vent': dot(x,y,p.r,`rgba(246,208,140,${0.6*a})`); break;
+      case 'abs': ring(x,y,p.r+(25-p.life)*0.3,`rgba(255,255,255,${a})`); break;
+      case 'air': dot(x,y,2.2,'rgba(255,255,255,.95)'); break;
+      case 'water': dot(x,y,2.8,'#4fa3d9'); break;
+    }
+  });
+  // gelembung sabun (uji dingin)
+  if(mode==='cold'){ [205,262,318].forEach((x,i)=>{ const n=C.soap[i]; if(n>0){ const r=Math.min(15,3+n*0.5);
+      g.beginPath(); g.arc(x+4,180-r,r,0,7); g.fillStyle='rgba(220,235,255,.25)'; g.fill(); g.strokeStyle='rgba(255,180,230,.95)'; g.lineWidth=1.6; g.stroke(); } }); }
+  if(py && S.rupt){ g.fillStyle='rgba(138,55,68,.55)'; g.fillRect(0,0,W,H); txt('⚠ OVERPRESSURE — REACTOR FAILURE (no relief valve)',W/2,H/2,'#fff',20,'center',800); }
+}
+function dot(x,y,r,c){ g.beginPath(); g.arc(x,y,r,0,7); g.fillStyle=c; g.fill(); }
+function ring(x,y,r,c){ g.beginPath(); g.arc(x,y,r,0,7); g.strokeStyle=c; g.lineWidth=1.4; g.stroke(); }
+
+/* =====================================================================
+   GRAFIK
+   ===================================================================== */
+const ch=$('chart'), cg=ch.getContext('2d'), CW=560, CH=230;
+function drawChart(){
+  if(!S) return;
+  cg.clearRect(0,0,CW,CH);
+  const x0=40,x1=CW-40,y0=CH-28,y1=12;
+  const tMax=Math.max(60,Math.ceil(S.t/30)*30);
+  const Lmax=Math.max(2,S.Th.oilV*1.1), Hmax=Math.max(0.5,S.Th.hcl*1.1);
+  cg.strokeStyle='#eadfc8'; cg.lineWidth=1; cg.font='10px Segoe UI'; cg.fillStyle='#7a6a5c'; cg.textAlign='center';
+  for(let i=0;i<=6;i++){ const x=x0+(x1-x0)*i/6; cg.beginPath(); cg.moveTo(x,y1); cg.lineTo(x,y0); cg.stroke(); cg.fillText(Math.round(tMax*i/6),x,y0+13); }
+  for(let i=0;i<=4;i++){ const y=y0-(y0-y1)*i/4; cg.beginPath(); cg.moveTo(x0,y); cg.lineTo(x1,y); cg.stroke(); }
+  cg.textAlign='right'; cg.fillStyle='#8a3744'; for(let i=0;i<=4;i++) cg.fillText(600*i/4,x0-4,y0-(y0-y1)*i/4+3);
+  cg.textAlign='left'; cg.fillStyle='#c27549'; for(let i=0;i<=4;i++) cg.fillText(fmt(Lmax*i/4,1)+' L',x1+3,y0-(y0-y1)*i/4+3);
+  cg.textAlign='center'; cg.fillStyle='#7a6a5c'; cg.fillText('minutes',(x0+x1)/2,CH-3);
+  const plot=(fn,max,col,w)=>{ cg.beginPath(); S.hist.forEach((h,i)=>{ const x=x0+(x1-x0)*h.t/tMax, y=y0-(y0-y1)*Math.min(1,fn(h)/max); i?cg.lineTo(x,y):cg.moveTo(x,y); }); cg.strokeStyle=col; cg.lineWidth=w; cg.stroke(); };
+  cg.setLineDash([4,3]); cg.strokeStyle='#8a3744'; cg.beginPath(); const yT=y0-(y0-y1)*S.I.Tset/600; cg.moveTo(x0,yT); cg.lineTo(x1,yT); cg.lineWidth=1; cg.stroke(); cg.setLineDash([]);
+  cg.setLineDash([2,3]); cg.strokeStyle='#00615c'; cg.beginPath(); const yP=y0-(y0-y1)*50/120; cg.moveTo(x0,yP); cg.lineTo(x1,yP); cg.stroke(); cg.setLineDash([]);
+  plot(h=>h.T,600,'#8a3744',2.2); plot(h=>h.P,120,'#00615c',2); plot(h=>h.L,Lmax,'#c27549',2.4);
+  if(S.Th.hcl>0) plot(h=>h.H,Hmax,'#9fbf2a',2);
+}
+
+/* =====================================================================
+   PANEL TEKS
+   ===================================================================== */
+function updateCalc(){
+  const I=readInputs(), Th=theory(I);
+  const parts_=KEYS.filter(k=>I.fr[k]>0);
+  const comp=parts_.map(k=>`${k} ${Math.round(I.fr[k]*100)}% = ${fmt(Th.m[k],2)} kg`).join('; ');
+  const vol=parts_.map(k=>`${fmt(Th.m[k],2)}/${fmt(POLY[k].rho,2)}`).join(' + ');
+  const oil=parts_.map(k=>`${fmt(Th.m[k],2)}×${fmt(POLY[k].oil,2)}`).join(' + ');
+  const sc=I.scale;
+  let h='';
+  h+=`<div><b>1) Batch composition</b> (m = ${I.M} kg): ${comp}</div>`;
+  h+=`<div><b>2) Shredded plastic volume</b> V = Σ(mᵢ/ρᵢ) = ${vol} = <b>${fmt(Th.vBulk,1)} L</b> → mixture density ρ = ${fmt(Th.rhoMix,3)} kg/L</div>`;
+  h+=`<div><b>3) Reactor volume</b> (headspace ${Math.round(I.h*100)}%): V<sub>R</sub> = ${fmt(Th.vBulk,1)} ÷ ${fmt(1-I.h,2)} = <b>${fmt(Th.vReact,1)} L</b></div>`;
+  h+=`<div><b>4) Dimensions</b> (H = 1.5 D): D = ${fmt(Th.D,1)} cm, H = ${fmt(Th.H,1)} cm → prototype 1:${sc}: ${fmt(Th.D/sc,1)} × ${fmt(Th.H/sc,1)} cm</div>`;
+  h+=`<div><b>5) Condenser surface area</b> A = π × d × L = π × ${fmt(I.d,1)} × ${fmt(I.Lm*100,0)} = <b>${fmt(Th.A,0)} cm²</b> (model 1:${sc}: ${fmt(Th.A/sc/sc,1)} cm²)</div>`;
+  h+=`<div><b>6) Predicted oil yield</b> = Σ mᵢ×Yᵢ = ${oil} = <b>${fmt(Th.oil,2)} kg</b> ÷ ${fmt(Th.oilRho,2)} kg/L = <b>${fmt(Th.oilV,1)} L</b></div>`;
+  h+=`<div><b>7) Oil energy</b> ≈ ${fmt(Th.oil,2)} kg × 43 MJ/kg = ${fmt(Th.oil*43,0)} MJ ≈ ${fmt(Th.oil*43/3.6,0)} kWh</div>`;
+  if(Th.hcl>0) h+=`<div><b>8) HCl from PVC</b> = 0.55 × ${fmt(Th.m.PVC,2)} kg = <b>${fmt(Th.hcl,2)} kg</b> (${fmt(Th.hcl*1000/36.46,0)} mol) — scrubber base capacity is only ${BASE_MOL} mol</div>`;
+  if(Th.sub>0) h+=`<div><b>8) PET sublimate</b> = 0.15 × ${fmt(Th.m.PET,2)} kg = <b>${fmt(Th.sub,2)} kg</b> of solid terephthalic and benzoic acids</div>`;
+  $('calc').innerHTML=h;
+}
+
+function updateResults(){
+  const Th=S.Th, gasRho=1.1;
+  const rows=[
+    ['Liquid oil (kg)',fmt(Th.oil,2),fmt(S.oilKg,2)],
+    ['Liquid oil (L)',fmt(Th.oilV,1),fmt(S.oilL,1)],
+    ['Char (kg)',fmt(Th.ch,2),fmt(S.charKg,2)],
+    ['Non-condensable gas (kg / m³)',`${fmt(Th.gas,2)} / ${fmt(Th.gas/gasRho,1)}`,`${fmt(S.gasKg,2)} / ${fmt(S.gasKg/gasRho,1)}`],
+    ['HCl generated (kg)',fmt(Th.hcl,2),fmt(S.hclGen,2)],
+    ['HCl captured / released (kg)','–',`${fmt(S.hclCap,2)} / ${fmt(S.hclEsc,2)}`],
+    ['PET sublimate in condenser (kg)',fmt(Th.sub,2),fmt(S.subDep,2)],
+    ['Vapor lost through leaks, combustion, and venting (kg)','0.00',fmt(S.leakLoss+S.burn+S.ventLoss,2)],
+    ['Oil energy (MJ)',fmt(Th.oil*43,0),fmt(S.oilKg*43,0)],
+    ['Undecomposed plastic (kg)','0.00',fmt(reactiveRemaining(),2)]
+  ];
+  $('resBody').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td class="num">${r[1]}</td><td class="num">${r[2]}</td></tr>`).join('');
+}
+
+function updateFindings(){
+  const I=S.I, Th=S.Th, f=[];
+  const effAvg=S.effW>0?S.effSum/S.effW:S.eff;
+  const ppm=S.oilKg>0?S.clOil/S.oilKg*1e6:0;
+  if(Th.m.PVC>0){
+    f.push(['bad',`${fmt(Th.m.PVC,2)} kg of PVC releases ${fmt(S.hclGen,2)} kg of HCl gas (yellow-green particles). The scrubber captures ${fmt(S.hclCap,2)} kg; ${fmt(S.hclEsc,2)} kg escapes into the air.`]);
+    if(S.hclGen>0.01){ const p=pHval(); if(p!==null) f.push([p<4?'bad':'warn',`Scrubber pH drops to ${fmt(p,1)}${I.scr==='alk'&&S.acid>BASE_MOL?' — base capacity exhausted':''}. The pipe and reactor corrode; the oil contains ±${fmt(ppm,0)} ppm Cl.`]); }
+    f.push(['warn','Safety finding: Separate PVC (#3) in Zone 1 before it enters the reactor.']);
+  }
+  if(Th.m.PET>0) f.push([S.clog>0.4?'bad':'warn',`PET deposits ${fmt(S.subDep,2)} kg of solid sublimate in the condenser, causing ${Math.round(S.clog*100)}% blockage. ${S.clog>=0.75?'Flow to the oil collector and scrubber has stopped; pressure may rise.':'Flow to the collector and scrubber is restricted.'} Mechanical recycling is more suitable for PET.`]);
+  if(I.h<0.2) f.push(['bad',`Headspace ${Math.round(I.h*100)}% < 20%: foaming melt enters the pipe (${fmt(S.wax,2)} kg of wax). Peak pressure: ${fmt(S.pMax,0)} kPa.`]);
+  if(S.vents>0) f.push(['warn',`The relief valve opens ${S.vents} times (pressure > 50 kPa), venting ${fmt(S.ventLoss,2)} kg of vapor to relieve pressure.`]);
+  if(S.rupt) f.push(['bad','Without a relief valve, pressure exceeds 100 kPa and the reactor fails in the model. Pressure protection is a required design criterion.']);
+  if(I.seal==='leak') f.push(['bad',`Leaky lid: ${fmt(S.leakLoss,2)} kg of vapor escapes and ${fmt(S.burn,2)} kg burns as oxygen enters (fire risk). Check the gasket and clamps in cold test mode.`]);
+  if(S.t>5){
+    if(effAvg<0.85) f.push(['warn',`Mean condenser efficiency: ${Math.round(effAvg*100)}% (< 85%). In the simulation, try a longer submerged pipe (A = πdL), circulating water, or a slope of ≥ 8°.`]);
+    else f.push(['ok',`Mean condenser efficiency: ${Math.round(effAvg*100)}% — the ${fmt(Th.A,0)} cm² pipe surface is sufficient to condense vapor in the model.`]);
+  }
+  if(S.boiled) f.push(['bad','The static water bath reaches 100 °C: heat from condensation (about 1,100 kJ per kg of oil) exceeds what 30 L of water can absorb without boiling. Try circulating water in the simulation.']);
+  if(I.Tset<400 && Th.m.PVC<I.M) f.push(['warn',`The target temperature of ${I.Tset} °C is too low for PP/PE cracking (roughly 400–500 °C); ${fmt(reactiveRemaining(),2)} kg of plastic remains.`]);
+  if(S.done && !S.rupt){
+    const pct=Th.oilV>0?S.oilL/Th.oilV*100:0;
+    f.unshift([pct>=85?'ok':'warn',`Batch completed in ${Math.round(S.t)} min: ${fmt(S.oilL,1)} L of oil (${Math.round(pct)}% of the predicted ${fmt(Th.oilV,1)} L), ${fmt(S.charKg,2)} kg of char, and ${fmt(S.gasKg,2)} kg of gas.`]);
+  }
+  if(!f.length) f.push(['ok','Press ▶ Start to see drying → melting → thermal cracking → condensation.']);
+  $('findings').innerHTML=f.map(x=>`<li class="f-${x[0]}">${x[1]}</li>`).join('');
+}
+
+function updateGauges(){
+  if(mode==='cold'){
+    $('gT').textContent = C.test? `${Math.min(60,Math.round(C.t))} s` : '0 s';
+    $('gTemp').textContent='30 °C (cold)'; $('gP').textContent=`${fmt(C.P,1)} kPa`;
+    $('gTwL').textContent='Leak points'; $('gTw').textContent = C.test==='air' ? String(C.leakPts) : '–';
+    $('gEffL').textContent='Water input'; $('gEff').textContent = `${C.spawned} mL`;
+    $('gPH').textContent='7.0'; $('gOilL').textContent='Water collected'; $('gOil').textContent=`${C.rec} mL`;
+    return;
+  }
+  $('gTwL').textContent='Cooling water'; $('gEffL').textContent='Condenser efficiency'; $('gOilL').textContent='Oil collected';
+  $('gT').textContent=`${Math.round(S.t)} min`;
+  $('gTemp').textContent=`${Math.round(S.T)} °C`;
+  $('gP').textContent=`${fmt(S.P,0)} kPa`;
+  $('gTw').textContent= S.I.cool==='air' ? '– (air)' : `${Math.round(S.Tw)} °C`;
+  $('gEff').textContent= (S.rates.vap>0.002)? `${Math.round(S.eff*100)}%` : '–';
+  const p=pHval(); $('gPH').textContent = p===null?'–':fmt(p,1);
+  $('gOil').textContent=`${fmt(S.oilL,1)} L`;
+}
+
+function setStatus(t,c){ const el=$('status'); el.textContent=t; el.className='status '+c; }
+function updateStatus(){
+  if(mode==='cold') return;
+  if(S.rupt) return setStatus('⛔ Overpressure without a relief valve — reactor failure. Enable the relief valve and press Reset.','st-bad');
+  if(S.I.fr.PVC>0 && S.t===0) return setStatus('⚠ PVC selected: this model predicts hazardous HCl gas release during decomposition. Do not perform thermal pyrolysis at school.','st-bad');
+  if(S.I.fr.PVC>0 && S.hclEsc>0.001 && S.done) return setStatus(`⛔ PVC HCl GAS WARNING: ${fmt(S.hclEsc,2)} kg released to air in the model. This is a virtual simulation, not a school experiment.`,'st-bad');
+  if(S.done) return setStatus(`✓ Batch complete — ${fmt(S.oilL,1)} L of oil collected against a prediction of ${fmt(S.Th.oilV,1)} L. See the results and findings below.`, S.oilL>=0.85*S.Th.oilV?'st-ok':'st-warn');
+  if(!S.running && S.t===0) return;
+  if(!S.running) return setStatus('❚❚ Paused.','st-idle');
+  const r=S.rates;
+  if(S.I.fr.PVC>0 && (r.hcl>0.003 || S.hclEsc>0.001)) return setStatus(`⛔ PVC HCl GAS WARNING: ${fmt(S.hclEsc,2)} kg released to air${S.clog>=0.75?' while condenser flow is blocked':''}. Corrosive and hazardous — this is a virtual simulation, not a school experiment.`,'st-bad');
+  if(S.venting) return setStatus('⚠ Pressure > 50 kPa — the relief valve is venting vapor.','st-warn');
+  if(S.clog>=0.75) return setStatus(`⛔ Condenser blocked (${Math.round(S.clog*100)}%): oil and gas no longer reach the collector or scrubber; pressure may rise.`,'st-bad');
+  if(r.sub>0.003) return setStatus(`⚠ PET is decomposing: white deposits are blocking the condenser (${Math.round(S.clog*100)}%).`,'st-warn');
+  if(r.vap>0.01) return setStatus(`Thermal cracking (${Math.round(S.T)} °C): hydrocarbon vapor flows to the condenser and forms liquid oil. Condenser efficiency: ${Math.round(S.eff*100)}%.`,'st-ok');
+  if(S.T<110) return setStatus(`Heating and drying the feed (${Math.round(S.T)} °C).`,'st-idle');
+  if(S.T<200) return setStatus(`Plastic is softening and melting (${Math.round(S.T)} °C).`,'st-idle');
+  return setStatus(`Approaching cracking temperature (${Math.round(S.T)} °C).`,'st-idle');
+}
+
+/* =====================================================================
+   MODE UJI DINGIN
+   ===================================================================== */
+let C={test:null,t:0,P:0,spawned:0,rec:0,ret:0,soap:[0,0,0],pooled:[],leakPts:0,scrBub:0,done:false};
+function coldReset(){ C={test:null,t:0,P:0,spawned:0,rec:0,ret:0,soap:[0,0,0],pooled:[],leakPts:0,scrBub:0,done:false}; parts=[]; }
+function startAir(){ coldReset(); C.test='air'; C.leakPts = $('sealC').value==='leak'?3:0;
+  setStatus('Air pressure test: low-pressure air enters the reactor, and soapy water on the joints reveals leaks over 60 seconds.','st-idle'); }
+function startWater(){ coldReset(); C.test='water';
+  setStatus('Flow test: 100 mL of water enters the upper end of the condenser; the test measures how much is collected.','st-idle'); }
+
+function stepCold(dtReal){
+  if(!C.test || C.done) return;
+  const G=geo(); C.t+=dtReal*7.5;
+  if(C.test==='air'){
+    const leak=C.leakPts>0;
+    C.P += ((leak? (C.t<15?5:Math.max(0.8,5-(C.t-15)*0.15)) : 12)-C.P)*Math.min(1,dtReal*2);
+    if(C.t<60 && Math.random()<0.55){
+      C.spawned++;
+      const st=[{x:60,y:330},{x:94,y:318},{x:190,y:318},{x:240,y:280},{x:285,y:G.R.y+4}];
+      if(leak && Math.random()<0.4){ const i=Math.floor(Math.random()*3); addPath('air',st.slice(0,4).concat([{x:[205,262,318][i]+4,y:186}]),2.2,()=>{C.soap[i]++;}); }
+      else addPath('air',st.concat(G.outlet,[G.ce],gasRouteCold(G)),2.4,()=>{ C.scrBub++; addFree('bubA',G.dip.x+(Math.random()-0.5)*6,G.dip.y,0,-1.2,999,2.5+Math.random()*2); });
+    }
+    if(C.t>=60 && !C.done){ C.done=true; coldResult(); }
+  } else {
+    const s=+$('slope').value;
+    const r=(3+Math.max(0,8-s)*3+(s<2?6:0))/100;
+    if(C.spawned<100 && Math.random()<0.5){
+      C.spawned++;
+      const top={x:G.cs.x,y:G.cs.y-26};
+      if(Math.random()<r){
+        if(s<2 && Math.random()<0.5){ addPath('water',[top,G.cs,{x:298,y:104},{x:285,y:114},{x:285,y:190}],2,()=>{C.ret++;}); }
+        else { const u=s<3?0.2+Math.random()*0.7:0.6+Math.random()*0.35; addPath('water',[top,G.cs,lerp(G.cs,G.ce,u)],2,()=>{C.ret++; C.pooled.push({u});}); }
+      } else addPath('water',[top,G.cs,G.ce,{x:G.ce.x,y:404},{x:G.ce.x,y:470}],2.4,()=>{C.rec++;});
+    }
+    if(C.spawned>=100 && !parts.length && !C.done){ C.done=true; coldResult(); }
+  }
+}
+function gasRouteCold(G){ return [{x:G.ce.x,y:412},{x:G.port.x,y:G.port.y},{x:G.riseX,y:G.port.y},{x:G.riseX,y:290},{x:G.dip.x,y:290},{x:G.dip.x,y:G.dip.y}]; }
+function coldResult(){
+  const f=[];
+  if(C.test==='air'){
+    const ok=C.leakPts===0;
+    f.push([ok?'ok':'bad',`Leaks detected by soap bubbles at the lid or joints: ${C.leakPts} (target: 0).`]);
+    f.push([ok?'ok':'warn',`Bubbles in the water scrubber: ${C.scrBub>20?'Yes, steady one-way flow':'Weak flow — some air escapes through the lid'} (${C.scrBub} bubbles).`]);
+    f.push([ok?'ok':'bad',`Pressure held for 60 s: ${ok?'Yes, steady at about '+fmt(C.P,0)+' kPa':'No — fell to '+fmt(C.P,1)+' kPa'}.`]);
+    f.push(['warn', ok?'The prototype passed the airtightness test (criterion CT2).':'Redesign: improve the lid seal with a rubber gasket, evenly spaced clamps or bolts, or heat-resistant sealant, then retest (P2).']);
+    setStatus(ok?'✓ Airtightness test PASSED.':'⚠ Airtightness test FAILED — the lid leaked.', ok?'st-ok':'st-bad');
+  } else {
+    const rec=C.rec, s=+$('slope').value, ok=rec>=90;
+    f.push([ok?'ok':'bad',`Collected ${rec} mL out of 100 mL (${rec}% recovery; target: ≥ 90%).`]);
+    f.push([C.ret>10?'warn':'ok',`Water retained in the pipe or flowing back into the reactor: ${C.ret} mL at a ${s}° slope.`]);
+    f.push(['warn', ok?'The condenser slope meets the target (criterion CT3).':'Redesign: increase the condenser pipe slope to ≥ 8° and keep the pipe straight, without dips.']);
+    setStatus(ok?`✓ Flow test PASSED (${rec}%).`:`⚠ Flow test FAILED (${rec}% < 90%).`, ok?'st-ok':'st-bad');
+  }
+  $('coldRes').innerHTML=f.map(x=>`<li class="f-${x[0]}">${x[1]}</li>`).join('');
+}
+
+/* =====================================================================
+   MODE, BAHASA, LOOP
+   ===================================================================== */
+let referenceOpen = false;
+function showView(view){
+  referenceOpen = view === 'reference';
+  $('plasticReference').classList.toggle('hide', !referenceOpen);
+  $('simulatorLayout').classList.toggle('hide', referenceOpen);
+  $('tabReference').classList.toggle('active', referenceOpen);
+  $('tabReference').setAttribute('aria-expanded', String(referenceOpen));
+  if(referenceOpen){
+    $('tabPyro').classList.remove('active');
+    $('tabCold').classList.remove('active');
+  } else if(view !== mode){
+    setMode(view);
+  } else {
+    $('tabPyro').classList.toggle('active', mode === 'pyro');
+    $('tabCold').classList.toggle('active', mode === 'cold');
+    fit(cv,g,W,H); fit(ch,cg,CW,CH); drawChart();
+  }
+}
+
+function setMode(m){
+  mode=m; $('tabPyro').classList.toggle('active',m==='pyro'); $('tabCold').classList.toggle('active',m==='cold');
+  document.querySelectorAll('.pyro-only').forEach(e=>e.classList.toggle('hide',m!=='pyro'));
+  document.querySelectorAll('.cold-only').forEach(e=>e.classList.toggle('hide',m!=='cold'));
+  parts=[];
+  if(m==='cold'){ if(S) S.running=false; $('btnRun').textContent='▶ Resume'; coldReset(); setStatus('Cold testing mode — select the air pressure test or water flow test.','st-idle'); $('coldRes').innerHTML='<li class="f-warn">Select a test in the left panel.</li>'; }
+  else { resetSim(); }
+  setTimeout(()=>{ fit(cv,g,W,H); fit(ch,cg,CW,CH); drawChart(); },0);
+}
+
+let last=performance.now();
+function loop(now){
+  const dtR=Math.min(0.05,(now-last)/1000); last=now;
+  if(referenceOpen){ requestAnimationFrame(loop); return; }
+  if(mode==='pyro' && S){
+    if(S.running){
+      let sim=S.I.speed*dtR;
+      while(sim>0 && S.running){ const d=Math.min(0.1,sim); step(d); sim-=d; }
+      spawnPyro();
+    }
+  } else if(mode==='cold') stepCold(dtR);
+  updateParts();
+  drawScene();
+  if(now-lastUI>200){ lastUI=now; updateGauges(); if(mode==='pyro'&&S){ updateResults(); updateFindings(); updateStatus(); drawChart(); } }
+  requestAnimationFrame(loop);
+}
+
+fit(cv,g,W,H); fit(ch,cg,CW,CH);
+updateLabels(); resetSim();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
