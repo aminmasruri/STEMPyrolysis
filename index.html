@@ -10,8 +10,17 @@
     --mauve:#8d5d45; --teal:#496741; --cream:#f8f0df; --cream2:#fbf7ee; --sand:#c0a890;
     --copper:#af673b; --steel:#aa9382; --ink:#231f20; --line:#e3d5bb;
   }
+  :root[lang="id"]{
+    --indigo:#815332; --indigo-d:#60391e; --navy:#664024; --maroon:#934e2a; --plum:#78513a;
+    --teal:#65703b; --cream2:#f3e2c8; --line:#c9a47d;
+  }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Segoe UI',system-ui,sans-serif;background:#ece4d3;color:var(--ink);padding:12px 14px}
+  :root[lang="id"] body{background:#c9a987}
+  :root[lang="id"] .panel{box-shadow:0 2px 10px rgba(77,43,22,.16)}
+  :root[lang="id"] .gg,:root[lang="id"] select,:root[lang="id"] .presets button,:root[lang="id"] canvas#chart{background:#fff7e9}
+  :root[lang="id"] tr:nth-child(even) td,:root[lang="id"] .reference-table tbody tr:nth-child(even){background:#e9d2b4}
+  :root[lang="id"] .st-idle{background:#ead1ae}
   header{background:linear-gradient(120deg,#3c3e66,#505383 55%,#6e5375);color:var(--cream);
     border-radius:14px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
     box-shadow:0 4px 14px rgba(35,31,32,.18)}
@@ -58,7 +67,7 @@
   .st-ok{background:#e1efe9;color:var(--teal);border-color:#8fbfb2}
   .st-warn{background:#f7e7d6;color:#8a4a17;border-color:#dfa877}
   .st-bad{background:#f5dfe2;color:var(--maroon);border-color:#d39aa3}
-  canvas#scene{width:100%;aspect-ratio:1100/560;display:block;border-radius:11px;border:2px solid var(--indigo-d);background:#59483e}
+  canvas#scene{width:100%;aspect-ratio:1100/560;display:block;border-radius:11px;border:2px solid var(--indigo-d);background:#484878}
   .gauges{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;margin-top:9px}
   @media(max-width:900px){.gauges{grid-template-columns:repeat(4,1fr)}}
   .gg{background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:6px 8px}
@@ -401,6 +410,7 @@ function onLive(){ updateLabels(); if(mode==='pyro'){ updateCalc(); } }
 let S = null, parts = [], deposits = [], flakes = [], lastUI = 0;
 
 function resetSim(){
+  gaugePressure=0; gaugeLast=performance.now();
   const I = readInputs(), Th = theory(I);
   S = { I, Th, t:0, T:30, Tw:30, P:0, running:false, done:false, rupt:false, heater:true,
         rem:{}, remCl:0, remRes:0, oilKg:0, oilL:0, charKg:0, gasKg:0, unc:0, hclGen:0, hclCap:0, hclEsc:0, acid:0,
@@ -671,10 +681,11 @@ function steel(x,w){ const gr=g.createLinearGradient(x,0,x+w,0); gr.addColorStop
 function can(x,y,w,h){ g.fillStyle=steel(x,w); g.fillRect(x,y,w,h); g.strokeStyle='#3c3e66'; g.lineWidth=2; g.strokeRect(x,y,w,h);
   g.strokeStyle='rgba(60,62,102,.35)'; g.lineWidth=1; for(let yy=y+9;yy<y+h-3;yy+=9){ g.beginPath(); g.moveTo(x+2,yy); g.lineTo(x+w-2,yy); g.stroke(); } }
 
+let gaugePressure=0, gaugeLast=performance.now();
 function drawScene(){
   const G=geo(), L=reactorLevels(G), py=(mode==='pyro'&&S);
   // dinding & meja
-  let gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#886b55'); gr.addColorStop(0.75,'#59483e'); g.fillStyle=gr; g.fillRect(0,0,W,H);
+  let gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#5d6898'); gr.addColorStop(0.75,'#484878'); g.fillStyle=gr; g.fillRect(0,0,W,H);
   g.fillStyle='rgba(248,240,223,.05)'; g.beginPath(); g.moveTo(420,0); g.lineTo(640,0); g.lineTo(820,505); g.lineTo(240,505); g.closePath(); g.fill();
   g.fillStyle='#c0a890'; g.fillRect(0,505,W,55); g.fillStyle='#a8907a'; g.fillRect(0,505,W,4);
   // pil zona
@@ -738,12 +749,19 @@ function drawScene(){
   g.fillStyle='#8f91ab'; g.fillRect(G.R.x-6,180,G.R.w+12,10); g.strokeStyle='#3c3e66'; g.lineWidth=2; g.strokeRect(G.R.x-6,180,G.R.w+12,10);
   g.fillStyle= sealVal==='tight' ? '#00615c' : '#8a3744'; g.fillRect(G.R.x-4,188,G.R.w+8,3);
   if(sealVal==='leak'){ g.fillStyle='#24253f'; [205,262,318].forEach(x=>g.fillRect(x,186,9,6)); }
-  // manometer
+  // Manometer: smooth needle follows model pressure; 50 kPa is the relief-valve threshold.
   line([{x:222,y:180},{x:222,y:168}],4,'#3c3e66');
-  g.beginPath(); g.arc(222,154,15,0,7); g.fillStyle='#f8f0df'; g.fill(); g.strokeStyle='#3c3e66'; g.lineWidth=2.5; g.stroke();
-  const Pdisp = py? S.P : (C.test==='air'? C.P : 0);
-  const ang=Math.PI*0.75+Math.PI*1.5*Math.min(Pdisp,120)/120;
-  g.beginPath(); g.moveTo(222,154); g.lineTo(222+11*Math.cos(ang),154+11*Math.sin(ang)); g.strokeStyle='#8a3744'; g.lineWidth=2; g.stroke();
+  const pressure = py ? S.P : (C.test==='air' ? C.P : 0);
+  gaugePressure += (pressure-gaugePressure)*Math.min(1,Math.max(0,(performance.now()-gaugeLast)/1000)*12);
+  gaugeLast=performance.now();
+  const danger = pressure>=50;
+  const flash = danger && Math.floor(performance.now()/320)%2===0;
+  g.beginPath(); g.arc(222,154,15,0,Math.PI*2); g.fillStyle=flash?'#ffcccc':'#f8f0df'; g.fill();
+  g.strokeStyle=flash?'#ff2020':'#3c3e66'; g.lineWidth=flash?3:2.5; g.stroke();
+  const ang=Math.PI*0.75+Math.PI*1.5*Math.min(Math.max(gaugePressure,0),120)/120;
+  g.beginPath(); g.moveTo(222,154); g.lineTo(222+12*Math.cos(ang),154+12*Math.sin(ang));
+  g.strokeStyle=flash?'#ff2020':danger?'#ba2929':'#8a3744'; g.lineWidth=flash?3.5:2.5; g.lineCap='round'; g.stroke();
+  g.beginPath(); g.arc(222,154,2,0,Math.PI*2); g.fillStyle=g.strokeStyle; g.fill();
   // katup pengaman
   const reliefOn = mode==='pyro'? $('relief').checked : true;
   g.fillStyle=reliefOn?'#8a3744':'#7b7b8f'; g.fillRect(306,162,12,18); g.beginPath(); g.arc(312,160,7,0,7); g.fill();
@@ -1052,6 +1070,7 @@ function showView(view){
 }
 
 function setMode(m){
+  gaugePressure=0; gaugeLast=performance.now();
   mode=m; $('tabPyro').classList.toggle('active',m==='pyro'); $('tabCold').classList.toggle('active',m==='cold');
   document.querySelectorAll('.pyro-only').forEach(e=>e.classList.toggle('hide',m!=='pyro'));
   document.querySelectorAll('.cold-only').forEach(e=>e.classList.toggle('hide',m!=='cold'));
